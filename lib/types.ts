@@ -6,6 +6,7 @@ export type Product = {
   buyingPrice: number;
   sellingPrice: number;
   lowStock: number;
+  barcode?: string;
 };
 
 export type SaleItem = {
