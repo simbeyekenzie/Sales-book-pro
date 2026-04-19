@@ -5,6 +5,7 @@ import { ProductsProvider } from "@/components/ProductsProvider";
 export const metadata: Metadata = {
   title: "Sales Book Pro",
   description: "Stock and sales management system for Janus Enterprises Ltd",
+  manifest: "/manifest.json",
 };
 
 export default function RootLayout({
