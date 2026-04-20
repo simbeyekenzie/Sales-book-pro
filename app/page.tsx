@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { motion } from "motion/react";
 import AppHeader from "@/components/AppHeader";
 import BottomTabs from "@/components/BottomTabs";
 import SummaryCard from "@/components/SummaryCard";
@@ -41,9 +42,21 @@ export default function Home() {
   const [dailySales, setDailySales] = useState<DailySale[]>([]);
 
   useEffect(() => {
-    setInvoices(loadInvoices());
-    setDailySales(loadDailySales());
-  }, [products]);
+    const refreshDashboardData = () => {
+      setInvoices(loadInvoices());
+      setDailySales(loadDailySales());
+    };
+
+    refreshDashboardData();
+
+    window.addEventListener("focus", refreshDashboardData);
+    window.addEventListener("visibilitychange", refreshDashboardData);
+
+    return () => {
+      window.removeEventListener("focus", refreshDashboardData);
+      window.removeEventListener("visibilitychange", refreshDashboardData);
+    };
+  }, []);
 
   const dashboardStats = useMemo(() => {
     const totalProducts = getTotalProducts(products);
@@ -73,17 +86,27 @@ export default function Home() {
     <main className="app-shell">
       <AppHeader />
 
-      <section className="page-wrap">
-        <div className="page-hero hero-dashboard">
+      <section className="page-wrap pb-28 pt-3">
+        <motion.div
+          initial={{ opacity: 0, y: 18 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, delay: 0.04 }}
+          className="page-hero hero-dashboard"
+        >
           <div className="page-hero-content">
             <h2 className="page-hero-title">Home</h2>
             <p className="page-hero-subtitle">
               Live overview of stock, invoices, sales, and profit.
             </p>
           </div>
-        </div>
+        </motion.div>
 
-        <div className="stats-grid">
+        <motion.div
+          initial={{ opacity: 0, y: 18 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, delay: 0.1 }}
+          className="stats-grid"
+        >
           <SummaryCard title="Products" value={dashboardStats.totalProducts} />
           <SummaryCard
             title="Stock Units"
@@ -99,9 +122,14 @@ export default function Home() {
             value={formatCurrency(dashboardStats.todaysSalesTotal)}
           />
           <SummaryCard title="Invoices" value={dashboardStats.totalInvoices} />
-        </div>
+        </motion.div>
 
-        <div className="mt-4">
+        <motion.div
+          initial={{ opacity: 0, y: 18 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, delay: 0.16 }}
+          className="mt-4"
+        >
           <div className="surface-card p-4">
             <p className="text-sm font-medium text-slate-500">
               Potential Profit on Stock
@@ -114,9 +142,14 @@ export default function Home() {
               set selling prices.
             </p>
           </div>
-        </div>
+        </motion.div>
 
-        <div className="mt-6">
+        <motion.div
+          initial={{ opacity: 0, y: 18 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, delay: 0.22 }}
+          className="mt-6"
+        >
           <div className="mb-4">
             <h3 className="text-xl font-bold tracking-tight text-slate-900">
               Profit by Product
@@ -134,12 +167,19 @@ export default function Home() {
                 </p>
               </div>
             ) : (
-              products.map((product) => (
-                <ProductProfitCard key={product.id} product={product} />
+              products.map((product, index) => (
+                <motion.div
+                  key={product.id}
+                  initial={{ opacity: 0, y: 14 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.28, delay: index * 0.04 }}
+                >
+                  <ProductProfitCard product={product} />
+                </motion.div>
               ))
             )}
           </div>
-        </div>
+        </motion.div>
       </section>
 
       <BottomTabs />

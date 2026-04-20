@@ -4,6 +4,8 @@ type ProductCardProps = {
   product: Product;
   onAdd: (product: Product) => void;
   onReduce: (product: Product) => void;
+  onEdit: (product: Product) => void;
+  onDelete: (product: Product) => void;
 };
 
 function formatCurrency(amount: number) {
@@ -18,6 +20,8 @@ export default function ProductCard({
   product,
   onAdd,
   onReduce,
+  onEdit,
+  onDelete,
 }: ProductCardProps) {
   const isLowStock = product.quantity <= product.lowStock;
 
@@ -68,7 +72,9 @@ export default function ProductCard({
 
         <div className="rounded-2xl bg-slate-50 p-3">
           <p className="text-slate-500">Unit</p>
-          <p className="mt-1 font-semibold text-slate-900">{product.unit}</p>
+          <p className="mt-1 font-semibold text-slate-900">
+            {product.unit}
+          </p>
         </div>
       </div>
 
@@ -79,19 +85,34 @@ export default function ProductCard({
         </p>
       </div>
 
-      <div className="mt-4 flex gap-3">
+      {/* ACTION BUTTONS */}
+      <div className="mt-4 grid grid-cols-2 gap-2">
         <button
           onClick={() => onAdd(product)}
-          className="app-button app-button-primary flex-1"
+          className="app-button app-button-primary"
         >
           + Add
         </button>
 
         <button
           onClick={() => onReduce(product)}
-          className="app-button app-button-muted flex-1"
+          className="app-button app-button-muted"
         >
           - Reduce
+        </button>
+
+        <button
+          onClick={() => onEdit(product)}
+          className="app-button app-button-success"
+        >
+          Edit
+        </button>
+
+        <button
+          onClick={() => onDelete(product)}
+          className="app-button bg-red-600 text-white hover:bg-red-700"
+        >
+          Delete
         </button>
       </div>
     </article>

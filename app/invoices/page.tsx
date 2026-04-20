@@ -3,6 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import AppHeader from "@/components/AppHeader";
 import BottomTabs from "@/components/BottomTabs";
+import AppToast from "@/components/AppToast";
+import AppModal from "@/components/AppModal";
+import ConfirmModal from "@/components/ConfirmModal";
 import { useProducts } from "@/components/ProductsProvider";
 import {
   loadDailySales,
@@ -12,6 +15,12 @@ import {
 } from "@/lib/storage";
 import { exportDailySalesCSV, exportInvoicesCSV } from "@/lib/export";
 import { Invoice } from "@/lib/types";
+
+type ToastState = {
+  open: boolean;
+  message: string;
+  type: "success" | "error" | "info";
+};
 
 function formatCurrency(amount: number) {
   return new Intl.NumberFormat("en-ZM", {
@@ -23,17 +32,52 @@ function formatCurrency(amount: number) {
 
 export default function InvoicesPage() {
   const { products, setProducts } = useProducts();
+
   const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [hasLoadedInvoices, setHasLoadedInvoices] = useState(false);
+
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
+  const [invoiceToDelete, setInvoiceToDelete] = useState<Invoice | null>(null);
+
   const [editCustomerName, setEditCustomerName] = useState("");
   const [editCustomerPhone, setEditCustomerPhone] = useState("");
   const [editItems, setEditItems] = useState<Invoice["items"]>([]);
 
+  const [toast, setToast] = useState<ToastState>({
+    open: false,
+    message: "",
+    type: "info",
+  });
+
+  const showToast = (
+    message: string,
+    type: "success" | "error" | "info" = "info"
+  ) => {
+    setToast({ open: true, message, type });
+  };
+
   useEffect(() => {
-    setInvoices(loadInvoices());
+    if (!toast.open) return;
+
+    const timeout = setTimeout(() => {
+      setToast((prev) => ({ ...prev, open: false }));
+    }, 2400);
+
+    return () => clearTimeout(timeout);
+  }, [toast.open]);
+
+  useEffect(() => {
+    const savedInvoices = loadInvoices();
+    setInvoices(savedInvoices);
+    setHasLoadedInvoices(true);
   }, []);
+
+  useEffect(() => {
+    if (!hasLoadedInvoices) return;
+    saveInvoices(invoices);
+  }, [invoices, hasLoadedInvoices]);
 
   const filteredInvoices = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
@@ -54,25 +98,29 @@ export default function InvoicesPage() {
   };
 
   const handleExportInvoices = () => {
-    const allInvoices = loadInvoices();
-
-    if (allInvoices.length === 0) {
-      window.alert("No invoices available to export.");
+    if (invoices.length === 0) {
+      showToast("No invoices available to export.", "error");
       return;
     }
 
-    exportInvoicesCSV(allInvoices);
+    exportInvoicesCSV(invoices);
+    showToast("Invoices exported successfully.", "success");
   };
 
   const handleExportDailySales = () => {
     const allDailySales = loadDailySales();
 
     if (allDailySales.length === 0) {
-      window.alert("No daily sales available to export.");
+      showToast("No daily sales available to export.", "error");
       return;
     }
 
     exportDailySalesCSV(allDailySales);
+    showToast("Daily sales exported successfully.", "success");
+  };
+
+  const handleOpenInvoice = (invoice: Invoice) => {
+    setSelectedInvoice(invoice);
   };
 
   const handleEditInvoice = (invoice: Invoice) => {
@@ -83,8 +131,16 @@ export default function InvoicesPage() {
     setEditItems(invoice.items);
   };
 
+  const handleCloseEditModal = () => {
+    setEditingInvoice(null);
+    setEditCustomerName("");
+    setEditCustomerPhone("");
+    setEditItems([]);
+  };
+
   const handleEditItemQuantity = (index: number, value: string) => {
     const qty = Number(value);
+
     if (isNaN(qty) || qty < 0) return;
 
     setEditItems((prev) =>
@@ -101,19 +157,29 @@ export default function InvoicesPage() {
   };
 
   const handleRemoveEditItem = (index: number) => {
+    const removed = editItems[index];
     setEditItems((prev) => prev.filter((_, i) => i !== index));
+
+    if (removed) {
+      showToast(`${removed.name} removed from invoice.`, "info");
+    }
   };
 
   const handleSaveEditedInvoice = () => {
     if (!editingInvoice) return;
 
     if (!editCustomerName.trim()) {
-      window.alert("Customer name required");
+      showToast("Customer name required.", "error");
+      return;
+    }
+
+    if (!editCustomerPhone.trim()) {
+      showToast("Customer phone required.", "error");
       return;
     }
 
     if (editItems.length === 0) {
-      window.alert("Invoice must have at least one item");
+      showToast("Invoice must have at least one item.", "error");
       return;
     }
 
@@ -134,8 +200,9 @@ export default function InvoicesPage() {
       const deductQty = newItems.reduce((sum, i) => sum + i.quantity, 0);
 
       if (product.quantity < deductQty) {
-        window.alert(
-          `Not enough stock for ${product.name}. Edit exceeds available stock.`
+        showToast(
+          `Not enough stock for ${product.name}. Edit exceeds available stock.`,
+          "error"
         );
         return;
       }
@@ -161,43 +228,44 @@ export default function InvoicesPage() {
 
     const updatedInvoice: Invoice = {
       ...editingInvoice,
-      customerName: editCustomerName,
-      customerPhone: editCustomerPhone,
+      customerName: editCustomerName.trim(),
+      customerPhone: editCustomerPhone.trim(),
       items: editItems,
       total: newTotal,
       profit: newProfit,
     };
 
-    const updatedInvoices = loadInvoices().map((inv) =>
+    const updatedInvoices = invoices.map((inv) =>
       inv.id === updatedInvoice.id ? updatedInvoice : inv
     );
-    saveInvoices(updatedInvoices);
+
+    setInvoices(updatedInvoices);
 
     const updatedSales = loadDailySales().map((sale) =>
       sale.invoiceId === updatedInvoice.id
         ? {
             ...sale,
-            customerName: editCustomerName,
-            customerPhone: editCustomerPhone,
+            customerName: editCustomerName.trim(),
+            customerPhone: editCustomerPhone.trim(),
             total: newTotal,
             profit: newProfit,
           }
         : sale
     );
+
     saveDailySales(updatedSales);
 
-    setInvoices(updatedInvoices);
-    setEditingInvoice(null);
-
-    window.alert("Invoice updated successfully");
+    handleCloseEditModal();
+    showToast("Invoice updated successfully.", "success");
   };
 
-  const handleDeleteInvoice = (invoiceToDelete: Invoice) => {
-    const confirmed = window.confirm(
-      `Delete invoice ${invoiceToDelete.id}? This will restore the sold stock.`
-    );
+  const handleAskDeleteInvoice = (invoice: Invoice) => {
+    setInvoiceToDelete(invoice);
+    setSelectedInvoice(null);
+  };
 
-    if (!confirmed) return;
+  const handleConfirmDeleteInvoice = () => {
+    if (!invoiceToDelete) return;
 
     const restoredProducts = products.map((product) => {
       const matchingItems = invoiceToDelete.items.filter(
@@ -216,29 +284,26 @@ export default function InvoicesPage() {
 
     setProducts(restoredProducts);
 
-    const updatedInvoices = loadInvoices().filter(
+    const updatedInvoices = invoices.filter(
       (invoice) => invoice.id !== invoiceToDelete.id
     );
-    saveInvoices(updatedInvoices);
+    setInvoices(updatedInvoices);
 
     const updatedDailySales = loadDailySales().filter(
       (sale) => sale.invoiceId !== invoiceToDelete.id
     );
     saveDailySales(updatedDailySales);
 
-    if (selectedInvoice?.id === invoiceToDelete.id) {
-      setSelectedInvoice(null);
-    }
-
     if (editingInvoice?.id === invoiceToDelete.id) {
-      setEditingInvoice(null);
+      handleCloseEditModal();
     }
 
-    setInvoices(updatedInvoices);
-
-    window.alert(
-      `Invoice ${invoiceToDelete.id} deleted and stock restored successfully.`
+    showToast(
+      `Invoice ${invoiceToDelete.id} deleted and stock restored successfully.`,
+      "success"
     );
+
+    setInvoiceToDelete(null);
   };
 
   return (
@@ -246,6 +311,13 @@ export default function InvoicesPage() {
       <div className="print:hidden">
         <AppHeader />
       </div>
+
+      <AppToast
+        isOpen={toast.open}
+        message={toast.message}
+        type={toast.type}
+        onClose={() => setToast((prev) => ({ ...prev, open: false }))}
+      />
 
       <section className="page-wrap print:max-w-2xl">
         <div className="print:hidden">
@@ -300,7 +372,7 @@ export default function InvoicesPage() {
                     </div>
 
                     <button
-                      onClick={() => setSelectedInvoice(invoice)}
+                      onClick={() => handleOpenInvoice(invoice)}
                       className="app-button app-button-primary px-4 py-2 text-sm"
                     >
                       View
@@ -333,56 +405,48 @@ export default function InvoicesPage() {
             )}
           </div>
         </div>
+      </section>
 
+      <AppModal
+        isOpen={!!selectedInvoice}
+        onClose={() => setSelectedInvoice(null)}
+        title={selectedInvoice ? `Invoice ${selectedInvoice.id}` : "Invoice"}
+      >
         {selectedInvoice && (
-          <div className="surface-card-strong mt-6 p-5 print:mt-0 print:rounded-none print:shadow-none print:ring-0">
-            <div className="mb-6 flex items-start justify-between gap-4">
-              <div>
-                <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-                  Janus Enterprises Ltd
-                </h1>
-                <p className="mt-1 text-sm text-slate-500">Sales Invoice</p>
-              </div>
+          <>
+            <div className="rounded-2xl bg-slate-50 p-4 text-sm">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-slate-500">Customer Name</p>
+                  <p className="mt-1 font-medium text-slate-900">
+                    {selectedInvoice.customerName}
+                  </p>
+                </div>
 
-              <div className="text-right">
-                <p className="text-sm text-slate-500">Invoice No</p>
-                <p className="font-semibold text-slate-900">
-                  {selectedInvoice.id}
-                </p>
-              </div>
-            </div>
+                <div>
+                  <p className="text-slate-500">Phone</p>
+                  <p className="mt-1 font-medium text-slate-900">
+                    {selectedInvoice.customerPhone}
+                  </p>
+                </div>
 
-            <div className="grid grid-cols-2 gap-4 rounded-2xl bg-slate-50 p-4 text-sm">
-              <div>
-                <p className="text-slate-500">Customer Name</p>
-                <p className="mt-1 font-medium text-slate-900">
-                  {selectedInvoice.customerName}
-                </p>
-              </div>
+                <div>
+                  <p className="text-slate-500">Date</p>
+                  <p className="mt-1 font-medium text-slate-900">
+                    {selectedInvoice.date}
+                  </p>
+                </div>
 
-              <div>
-                <p className="text-slate-500">Phone</p>
-                <p className="mt-1 font-medium text-slate-900">
-                  {selectedInvoice.customerPhone}
-                </p>
-              </div>
-
-              <div>
-                <p className="text-slate-500">Date</p>
-                <p className="mt-1 font-medium text-slate-900">
-                  {selectedInvoice.date}
-                </p>
-              </div>
-
-              <div>
-                <p className="text-slate-500">Items</p>
-                <p className="mt-1 font-medium text-slate-900">
-                  {selectedInvoice.items.length}
-                </p>
+                <div>
+                  <p className="text-slate-500">Items</p>
+                  <p className="mt-1 font-medium text-slate-900">
+                    {selectedInvoice.items.length}
+                  </p>
+                </div>
               </div>
             </div>
 
-            <div className="mt-6 overflow-hidden rounded-2xl ring-1 ring-slate-200">
+            <div className="mt-4 max-h-72 overflow-y-auto rounded-2xl ring-1 ring-slate-200">
               <div className="grid grid-cols-4 bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-700">
                 <div>Item</div>
                 <div>Qty</div>
@@ -409,35 +473,33 @@ export default function InvoicesPage() {
               </div>
             </div>
 
-            <div className="mt-6 ml-auto max-w-xs space-y-3">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-slate-500">Total</span>
-                <span className="font-bold text-slate-900">
-                  {formatCurrency(selectedInvoice.total)}
-                </span>
-              </div>
+            <div className="mt-4 flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
+              <span className="text-sm text-slate-500">Total</span>
+              <span className="text-lg font-bold text-slate-900">
+                {formatCurrency(selectedInvoice.total)}
+              </span>
             </div>
 
-            <div className="mt-6 flex flex-wrap gap-3 print:hidden">
+            <div className="mt-5 grid grid-cols-2 gap-3">
               <button
                 onClick={handlePrint}
-                className="app-button app-button-primary flex-1"
+                className="app-button app-button-primary w-full"
               >
-                Print Invoice
+                Print
               </button>
 
               <button
                 onClick={() => handleEditInvoice(selectedInvoice)}
-                className="app-button app-button-secondary flex-1"
+                className="app-button app-button-secondary w-full"
               >
-                Edit Invoice
+                Edit
               </button>
 
               <button
-                onClick={() => handleDeleteInvoice(selectedInvoice)}
-                className="app-button app-button-danger flex-1"
+                onClick={() => handleAskDeleteInvoice(selectedInvoice)}
+                className="app-button app-button-danger w-full"
               >
-                Delete Invoice
+                Delete
               </button>
 
               <button
@@ -447,75 +509,87 @@ export default function InvoicesPage() {
                 Close
               </button>
             </div>
-          </div>
+          </>
         )}
+      </AppModal>
 
-        {editingInvoice && (
-          <div className="surface-card mt-6 p-5">
-            <h3 className="mb-4 text-lg font-bold text-slate-900">
-              Edit Invoice {editingInvoice.id}
-            </h3>
+      <AppModal
+        isOpen={!!editingInvoice}
+        onClose={handleCloseEditModal}
+        title={editingInvoice ? `Edit Invoice ${editingInvoice.id}` : "Edit Invoice"}
+      >
+        <div className="space-y-3">
+          <input
+            value={editCustomerName}
+            onChange={(e) => setEditCustomerName(e.target.value)}
+            placeholder="Customer name"
+          />
 
-            <div className="space-y-3">
+          <input
+            value={editCustomerPhone}
+            onChange={(e) => setEditCustomerPhone(e.target.value)}
+            placeholder="Phone"
+          />
+        </div>
+
+        <div className="mt-4 max-h-72 space-y-3 overflow-y-auto pr-1">
+          {editItems.map((item, index) => (
+            <div key={index} className="rounded-2xl bg-slate-50 p-3">
+              <div className="flex items-center justify-between gap-3">
+                <p className="font-medium text-slate-900">{item.name}</p>
+
+                <button
+                  onClick={() => handleRemoveEditItem(index)}
+                  className="rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-red-600"
+                >
+                  Remove
+                </button>
+              </div>
+
               <input
-                value={editCustomerName}
-                onChange={(e) => setEditCustomerName(e.target.value)}
-                placeholder="Customer name"
+                type="number"
+                min="0"
+                value={item.quantity}
+                onChange={(e) => handleEditItemQuantity(index, e.target.value)}
+                className="mt-3"
               />
 
-              <input
-                value={editCustomerPhone}
-                onChange={(e) => setEditCustomerPhone(e.target.value)}
-                placeholder="Phone"
-              />
+              <p className="mt-2 text-sm text-slate-500">
+                Total: {formatCurrency(item.lineTotal)}
+              </p>
             </div>
+          ))}
+        </div>
 
-            <div className="mt-4 space-y-3">
-              {editItems.map((item, index) => (
-                <div key={index} className="rounded-2xl bg-slate-50 p-3">
-                  <div className="flex items-center justify-between">
-                    <p className="font-medium text-slate-900">{item.name}</p>
-                    <button
-                      onClick={() => handleRemoveEditItem(index)}
-                      className="text-sm font-medium text-red-600"
-                    >
-                      Remove
-                    </button>
-                  </div>
+        <div className="mt-5 grid grid-cols-2 gap-3">
+          <button
+            onClick={handleCloseEditModal}
+            className="app-button app-button-muted w-full"
+          >
+            Cancel
+          </button>
 
-                  <input
-                    type="number"
-                    min="0"
-                    value={item.quantity}
-                    onChange={(e) => handleEditItemQuantity(index, e.target.value)}
-                    className="mt-2"
-                  />
+          <button
+            onClick={handleSaveEditedInvoice}
+            className="app-button app-button-success w-full"
+          >
+            Save Changes
+          </button>
+        </div>
+      </AppModal>
 
-                  <p className="mt-2 text-sm text-slate-500">
-                    Total: {formatCurrency(item.lineTotal)}
-                  </p>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-4 flex gap-3">
-              <button
-                onClick={handleSaveEditedInvoice}
-                className="app-button app-button-success flex-1"
-              >
-                Save Changes
-              </button>
-
-              <button
-                onClick={() => setEditingInvoice(null)}
-                className="app-button app-button-muted flex-1"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        )}
-      </section>
+      <ConfirmModal
+        isOpen={!!invoiceToDelete}
+        title="Delete Invoice"
+        message={
+          invoiceToDelete
+            ? `Delete invoice ${invoiceToDelete.id}? This will restore the sold stock.`
+            : ""
+        }
+        confirmText="Delete"
+        onConfirm={handleConfirmDeleteInvoice}
+        onCancel={() => setInvoiceToDelete(null)}
+      />
 
       <div className="print:hidden">
         <BottomTabs />

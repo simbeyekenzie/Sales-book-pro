@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import AppHeader from "@/components/AppHeader";
 import BottomTabs from "@/components/BottomTabs";
 import BarcodeScanner from "@/components/BarcodeScanner";
+import AppToast from "@/components/AppToast";
+import AppModal from "@/components/AppModal";
 import { useProducts } from "@/components/ProductsProvider";
 import { generateInvoiceNumber } from "@/lib/invoice";
 import {
@@ -13,6 +15,12 @@ import {
   saveInvoices,
 } from "@/lib/storage";
 import { DailySale, Invoice, Product, SaleItem } from "@/lib/types";
+
+type ToastState = {
+  open: boolean;
+  message: string;
+  type: "success" | "error" | "info";
+};
 
 function formatCurrency(amount: number) {
   return new Intl.NumberFormat("en-ZM", {
@@ -32,6 +40,52 @@ export default function SalesPage() {
   const [quantity, setQuantity] = useState("");
   const [saleItems, setSaleItems] = useState<SaleItem[]>([]);
   const [showScanner, setShowScanner] = useState(false);
+
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [dailySales, setDailySales] = useState<DailySale[]>([]);
+  const [hasLoadedSalesData, setHasLoadedSalesData] = useState(false);
+
+  const [showProductPicker, setShowProductPicker] = useState(false);
+  const [productSearch, setProductSearch] = useState("");
+
+  const [toast, setToast] = useState<ToastState>({
+    open: false,
+    message: "",
+    type: "info",
+  });
+
+  const showToast = (
+    message: string,
+    type: "success" | "error" | "info" = "info"
+  ) => {
+    setToast({ open: true, message, type });
+  };
+
+  useEffect(() => {
+    if (!toast.open) return;
+
+    const timeout = setTimeout(() => {
+      setToast((prev) => ({ ...prev, open: false }));
+    }, 2400);
+
+    return () => clearTimeout(timeout);
+  }, [toast.open]);
+
+  useEffect(() => {
+    setInvoices(loadInvoices());
+    setDailySales(loadDailySales());
+    setHasLoadedSalesData(true);
+  }, []);
+
+  useEffect(() => {
+    if (!hasLoadedSalesData) return;
+    saveInvoices(invoices);
+  }, [invoices, hasLoadedSalesData]);
+
+  useEffect(() => {
+    if (!hasLoadedSalesData) return;
+    saveDailySales(dailySales);
+  }, [dailySales, hasLoadedSalesData]);
 
   useEffect(() => {
     if (products.length > 0 && selectedProductId === 0) {
@@ -54,11 +108,28 @@ export default function SalesPage() {
     return product.quantity - getAlreadyAddedQuantity(product.id);
   };
 
+  const filteredProducts = useMemo(() => {
+    const term = productSearch.trim().toLowerCase();
+
+    if (!term) return products;
+
+    return products.filter((product) => {
+      const remainingStock = getRemainingStock(product);
+
+      return (
+        product.name.toLowerCase().includes(term) ||
+        product.unit.toLowerCase().includes(term) ||
+        String(remainingStock).includes(term) ||
+        (product.barcode || "").toLowerCase().includes(term)
+      );
+    });
+  }, [products, productSearch, saleItems]);
+
   const handleBarcodeSearch = () => {
     const trimmedBarcode = barcodeInput.trim();
 
     if (!trimmedBarcode) {
-      window.alert("Please enter a barcode.");
+      showToast("Please enter a barcode.", "error");
       return;
     }
 
@@ -67,12 +138,12 @@ export default function SalesPage() {
     );
 
     if (!matchedProduct) {
-      window.alert("No product found with that barcode.");
+      showToast("No product found with that barcode.", "error");
       return;
     }
 
     setSelectedProductId(matchedProduct.id);
-    window.alert(`${matchedProduct.name} selected.`);
+    showToast(`${matchedProduct.name} selected.`, "success");
   };
 
   const handleScan = (code: string) => {
@@ -84,13 +155,13 @@ export default function SalesPage() {
     );
 
     if (!matchedProduct) {
-      window.alert("Product not found for this barcode.");
+      showToast("Product not found for this barcode.", "error");
       return;
     }
 
     setSelectedProductId(matchedProduct.id);
     setShowScanner(false);
-    window.alert(`${matchedProduct.name} selected.`);
+    showToast(`${matchedProduct.name} selected.`, "success");
   };
 
   const handleAddItem = () => {
@@ -99,15 +170,16 @@ export default function SalesPage() {
     const parsedQuantity = Number(quantity);
 
     if (!parsedQuantity || parsedQuantity <= 0) {
-      window.alert("Please enter a valid quantity.");
+      showToast("Please enter a valid quantity.", "error");
       return;
     }
 
     const remainingStock = getRemainingStock(selectedProduct);
 
     if (parsedQuantity > remainingStock) {
-      window.alert(
-        `Not enough stock. Only ${remainingStock} ${selectedProduct.unit} available for ${selectedProduct.name}.`
+      showToast(
+        `Not enough stock. Only ${remainingStock} ${selectedProduct.unit} available for ${selectedProduct.name}.`,
+        "error"
       );
       return;
     }
@@ -126,25 +198,31 @@ export default function SalesPage() {
 
     setSaleItems((prev) => [...prev, newItem]);
     setQuantity("");
+    showToast(`${selectedProduct.name} added to invoice.`, "success");
   };
 
   const handleRemoveItem = (indexToRemove: number) => {
+    const removedItem = saleItems[indexToRemove];
     setSaleItems((prev) => prev.filter((_, index) => index !== indexToRemove));
+
+    if (removedItem) {
+      showToast(`${removedItem.name} removed from invoice.`, "info");
+    }
   };
 
   const handleFinalizeSale = () => {
     if (!customerName.trim()) {
-      window.alert("Please enter customer name.");
+      showToast("Please enter customer name.", "error");
       return;
     }
 
     if (!customerPhone.trim()) {
-      window.alert("Please enter customer phone.");
+      showToast("Please enter customer phone.", "error");
       return;
     }
 
     if (saleItems.length === 0) {
-      window.alert("Please add at least one sale item.");
+      showToast("Please add at least one sale item.", "error");
       return;
     }
 
@@ -192,14 +270,8 @@ export default function SalesPage() {
     });
 
     setProducts(updatedProducts);
-
-    const existingInvoices = loadInvoices();
-    saveInvoices([newInvoice, ...existingInvoices]);
-
-    const existingDailySales = loadDailySales();
-    saveDailySales([newDailySale, ...existingDailySales]);
-
-    window.alert(`Sale completed successfully. Invoice ${invoiceId} created.`);
+    setInvoices((prev) => [newInvoice, ...prev]);
+    setDailySales((prev) => [newDailySale, ...prev]);
 
     setCustomerName("");
     setCustomerPhone("");
@@ -210,18 +282,22 @@ export default function SalesPage() {
     if (updatedProducts.length > 0) {
       setSelectedProductId(updatedProducts[0].id);
     }
+
+    showToast(`Sale completed. Invoice ${invoiceId} created.`, "success");
   };
 
   const grandTotal = saleItems.reduce((sum, item) => sum + item.lineTotal, 0);
 
-  const totalProfit = saleItems.reduce(
-    (sum, item) => sum + (item.unitPrice - item.costPrice) * item.quantity,
-    0
-  );
-
   return (
     <main className="app-shell">
       <AppHeader />
+
+      <AppToast
+        isOpen={toast.open}
+        message={toast.message}
+        type={toast.type}
+        onClose={() => setToast((prev) => ({ ...prev, open: false }))}
+      />
 
       <section className="page-wrap">
         <div className="page-hero hero-sales">
@@ -269,19 +345,21 @@ export default function SalesPage() {
                 onChange={(e) => setBarcodeInput(e.target.value)}
               />
 
-              <button
-                onClick={handleBarcodeSearch}
-                className="app-button app-button-secondary w-full"
-              >
-                Find by Barcode
-              </button>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={handleBarcodeSearch}
+                  className="app-button app-button-secondary w-full py-3 rounded-2xl"
+                >
+                  Find Barcode
+                </button>
 
-              <button
-                onClick={() => setShowScanner(true)}
-                className="app-button app-button-primary w-full"
-              >
-                Scan with Camera
-              </button>
+                <button
+                  onClick={() => setShowScanner(true)}
+                  className="app-button app-button-primary w-full py-3 rounded-2xl"
+                >
+                  Scan Camera
+                </button>
+              </div>
             </div>
           </div>
 
@@ -291,20 +369,29 @@ export default function SalesPage() {
             </h3>
 
             <div className="mt-4 space-y-3">
-              <select
-                value={selectedProductId}
-                onChange={(e) => setSelectedProductId(Number(e.target.value))}
+              <button
+                type="button"
+                onClick={() => setShowProductPicker(true)}
+                className="flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left shadow-sm transition hover:border-slate-300"
               >
-                {products.map((product) => {
-                  const remainingStock = getRemainingStock(product);
+                <div className="min-w-0">
+                  {selectedProduct ? (
+                    <>
+                      <p className="truncate font-semibold text-slate-900">
+                        {selectedProduct.name}
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        {getRemainingStock(selectedProduct)}{" "}
+                        {selectedProduct.unit} in stock
+                      </p>
+                    </>
+                  ) : (
+                    <p className="text-slate-400">Select product</p>
+                  )}
+                </div>
 
-                  return (
-                    <option key={product.id} value={product.id}>
-                      {product.name} — {remainingStock} {product.unit} available
-                    </option>
-                  );
-                })}
-              </select>
+                <span className="text-lg text-slate-400">⌄</span>
+              </button>
 
               {selectedProduct && (
                 <div className="rounded-2xl bg-slate-50 p-3 text-sm text-slate-600">
@@ -329,12 +416,25 @@ export default function SalesPage() {
                 onChange={(e) => setQuantity(e.target.value)}
               />
 
-              <button
-                onClick={handleAddItem}
-                className="app-button app-button-primary w-full"
-              >
-                Add Item
-              </button>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={handleAddItem}
+                  className="app-button app-button-primary w-full py-3 rounded-2xl"
+                >
+                  Add Item
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setQuantity("");
+                    setBarcodeInput("");
+                  }}
+                  className="app-button app-button-muted w-full py-3 rounded-2xl"
+                >
+                  Clear
+                </button>
+              </div>
             </div>
           </div>
 
@@ -391,23 +491,97 @@ export default function SalesPage() {
                 </p>
               </div>
 
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-slate-500">Projected Profit</p>
-                <p className="text-sm font-semibold text-emerald-600">
-                  {formatCurrency(totalProfit)}
-                </p>
-              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSaleItems([]);
+                    setQuantity("");
+                  }}
+                  className="app-button app-button-muted w-full py-3 rounded-2xl"
+                >
+                  Clear Items
+                </button>
 
-              <button
-                onClick={handleFinalizeSale}
-                className="app-button app-button-success w-full"
-              >
-                Finalize Sale
-              </button>
+                <button
+                  onClick={handleFinalizeSale}
+                  className="app-button app-button-success w-full py-3 rounded-2xl"
+                >
+                  Finalize Sale
+                </button>
+              </div>
             </div>
           </div>
         </div>
       </section>
+
+      <AppModal
+        isOpen={showProductPicker}
+        onClose={() => {
+          setShowProductPicker(false);
+          setProductSearch("");
+        }}
+        title="Select Product"
+      >
+        <div className="space-y-3">
+          <input
+            type="text"
+            placeholder="Search product, barcode, or unit"
+            value={productSearch}
+            onChange={(e) => setProductSearch(e.target.value)}
+          />
+
+          <div className="max-h-72 space-y-2 overflow-y-auto pr-1">
+            {filteredProducts.length === 0 ? (
+              <div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-500">
+                No matching products found.
+              </div>
+            ) : (
+              filteredProducts.map((product) => {
+                const remainingStock = getRemainingStock(product);
+                const isSelected = selectedProductId === product.id;
+
+                return (
+                  <button
+                    key={product.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedProductId(product.id);
+                      setShowProductPicker(false);
+                      setProductSearch("");
+                    }}
+                    className={`w-full rounded-2xl border px-4 py-3 text-left transition ${
+                      isSelected
+                        ? "border-blue-500 bg-blue-50"
+                        : "border-slate-200 bg-white hover:border-slate-300"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate font-semibold text-slate-900">
+                          {product.name}
+                        </p>
+                        <p className="mt-1 text-sm text-slate-500">
+                          {remainingStock} {product.unit} in stock
+                        </p>
+                        <p className="mt-1 text-xs text-slate-400">
+                          Barcode: {product.barcode?.trim() || "Not assigned"}
+                        </p>
+                      </div>
+
+                      {isSelected && (
+                        <span className="rounded-full bg-blue-600 px-2 py-1 text-xs font-semibold text-white">
+                          Selected
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </div>
+      </AppModal>
 
       {showScanner && (
         <BarcodeScanner
