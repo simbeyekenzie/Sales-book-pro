@@ -17,6 +17,7 @@ function formatCurrency(amount: number) {
 function isToday(dateString: string) {
   const d = new Date(dateString);
   const t = new Date();
+
   return (
     d.getDate() === t.getDate() &&
     d.getMonth() === t.getMonth() &&
@@ -34,97 +35,103 @@ export default function DailyPage() {
   }, []);
 
   const todaysSales = useMemo(
-    () => dailySales.filter((s) => isToday(s.date)),
+    () => dailySales.filter((sale) => isToday(sale.date)),
     [dailySales]
   );
 
   const todaysInvoices = useMemo(
-    () => invoices.filter((inv) => isToday(inv.date)),
+    () => invoices.filter((invoice) => isToday(invoice.date)),
     [invoices]
   );
 
   const totals = useMemo(() => {
-    const totalSales = todaysSales.reduce((sum, s) => sum + s.total, 0);
-    const totalProfit = todaysSales.reduce((sum, s) => sum + s.profit, 0);
+    const totalSales = todaysSales.reduce((sum, sale) => sum + sale.total, 0);
+    const totalProfit = todaysSales.reduce((sum, sale) => sum + sale.profit, 0);
     const count = todaysInvoices.length;
+
     return { totalSales, totalProfit, count };
   }, [todaysSales, todaysInvoices]);
 
   return (
-    <main className="min-h-screen bg-slate-50 pb-24">
+    <main className="app-shell">
       <AppHeader />
 
-      <section className="mx-auto max-w-md px-4 py-5">
-        <div className="mb-5">
-          <h2 className="text-2xl font-bold tracking-tight text-slate-900">
-            Daily Sales
-          </h2>
-          <p className="mt-1 text-sm text-slate-500">
-            Today’s sales, profit, and invoices.
-          </p>
+      <section className="page-wrap">
+        <div className="page-hero hero-daily">
+          <div className="page-hero-content">
+            <h2 className="page-hero-title"></h2>
+            <p className="page-hero-subtitle">
+             </p>
+          </div>
         </div>
 
-        {/* Summary */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
-            <p className="text-sm text-slate-500">Today’s Sales</p>
-            <h3 className="mt-2 text-2xl font-bold text-slate-900">
+        <div className="stats-grid">
+          <div className="surface-card p-4">
+            <p className="text-sm font-medium text-slate-500">Today’s Sales</p>
+            <h3 className="mt-2 text-2xl font-bold tracking-tight text-slate-900">
               {formatCurrency(totals.totalSales)}
             </h3>
           </div>
 
-          <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
-            <p className="text-sm text-slate-500">Today’s Profit</p>
-            <h3 className="mt-2 text-2xl font-bold text-emerald-600">
+          <div className="surface-card p-4">
+            <p className="text-sm font-medium text-slate-500">Today’s Profit</p>
+            <h3 className="mt-2 text-2xl font-bold tracking-tight text-emerald-600">
               {formatCurrency(totals.totalProfit)}
             </h3>
           </div>
 
-          <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200 col-span-2">
-            <p className="text-sm text-slate-500">Invoices Today</p>
-            <h3 className="mt-2 text-2xl font-bold text-slate-900">
+          <div className="surface-card p-4 col-span-2">
+            <p className="text-sm font-medium text-slate-500">Invoices Today</p>
+            <h3 className="mt-2 text-2xl font-bold tracking-tight text-slate-900">
               {totals.count}
             </h3>
           </div>
         </div>
 
-        {/* Today’s invoices list */}
         <div className="mt-6">
-          <h3 className="mb-3 text-lg font-semibold text-slate-900">
-            Today’s Invoices
-          </h3>
+          <div className="mb-3">
+            <h3 className="text-xl font-bold tracking-tight text-slate-900">
+              Today’s Invoices
+            </h3>
+            <p className="mt-1 text-sm text-slate-500">
+              A quick view of all invoice activity recorded today.
+            </p>
+          </div>
 
-          <div className="space-y-3">
+          <div className="space-y-4">
             {todaysInvoices.length === 0 ? (
-              <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
+              <div className="surface-card p-4">
                 <p className="text-sm text-slate-500">
                   No sales recorded today.
                 </p>
               </div>
             ) : (
-              todaysInvoices.map((inv) => (
-                <article
-                  key={inv.id}
-                  className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200"
-                >
-                  <div className="flex items-start justify-between">
+              todaysInvoices.map((invoice) => (
+                <article key={invoice.id} className="surface-card p-4">
+                  <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="font-semibold text-slate-900">
-                        {inv.id}
+                      <p className="text-base font-semibold text-slate-900">
+                        {invoice.id}
                       </p>
-                      <p className="text-xs text-slate-500">{inv.date}</p>
+                      <p className="mt-1 text-xs text-slate-500">
+                        {invoice.date}
+                      </p>
                     </div>
+
                     <p className="text-sm font-bold text-slate-900">
-                      {formatCurrency(inv.total)}
+                      {formatCurrency(invoice.total)}
                     </p>
                   </div>
 
-                  <div className="mt-2 text-sm text-slate-600">
-                    {inv.customerName} • {inv.customerPhone}
+                  <div className="mt-3 text-sm text-slate-600">
+                    {invoice.customerName} • {invoice.customerPhone}
                   </div>
 
-                  <div className="mt-2 text-sm text-emerald-600 font-medium">
-                    Profit: {formatCurrency(inv.profit)}
+                  <div className="mt-3 flex items-center justify-between rounded-2xl bg-slate-50 px-3 py-3">
+                    <span className="text-sm text-slate-500">Profit</span>
+                    <span className="text-sm font-semibold text-emerald-600">
+                      {formatCurrency(invoice.profit)}
+                    </span>
                   </div>
                 </article>
               ))

@@ -70,20 +70,20 @@ export default function Home() {
   }, [products, invoices, dailySales]);
 
   return (
-    <main className="min-h-screen bg-slate-50 pb-24">
+    <main className="app-shell">
       <AppHeader />
 
-      <section className="mx-auto max-w-md px-4 py-5">
-        <div className="mb-5">
-          <h2 className="text-2xl font-bold tracking-tight text-slate-900">
-            Dashboard
-          </h2>
-          <p className="mt-1 text-sm text-slate-500">
-            Live overview of stock, invoices, sales, and profit.
-          </p>
+      <section className="page-wrap">
+        <div className="page-hero hero-dashboard">
+          <div className="page-hero-content">
+            <h2 className="page-hero-title">Home</h2>
+            <p className="page-hero-subtitle">
+              Live overview of stock, invoices, sales, and profit.
+            </p>
+          </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="stats-grid">
           <SummaryCard title="Products" value={dashboardStats.totalProducts} />
           <SummaryCard
             title="Stock Units"
@@ -102,14 +102,16 @@ export default function Home() {
         </div>
 
         <div className="mt-4">
-          <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
-            <p className="text-sm text-slate-500">Potential Profit on Stock</p>
+          <div className="surface-card p-4">
+            <p className="text-sm font-medium text-slate-500">
+              Potential Profit on Stock
+            </p>
             <h3 className="mt-2 text-2xl font-bold tracking-tight text-emerald-600">
               {formatCurrency(dashboardStats.totalPotentialProfit)}
             </h3>
             <p className="mt-2 text-sm text-slate-500">
-              This is the expected profit if all current stock is sold at the set
-              selling prices.
+              This is the expected profit if all current stock is sold at the
+              set selling prices.
             </p>
           </div>
         </div>
@@ -124,10 +126,18 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="space-y-4">
-            {products.map((product) => (
-              <ProductProfitCard key={product.id} product={product} />
-            ))}
+          <div className="section-stack">
+            {products.length === 0 ? (
+              <div className="surface-card p-4">
+                <p className="text-sm text-slate-500">
+                  No products available yet.
+                </p>
+              </div>
+            ) : (
+              products.map((product) => (
+                <ProductProfitCard key={product.id} product={product} />
+              ))
+            )}
           </div>
         </div>
       </section>

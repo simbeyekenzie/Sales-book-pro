@@ -85,7 +85,6 @@ export default function InvoicesPage() {
 
   const handleEditItemQuantity = (index: number, value: string) => {
     const qty = Number(value);
-
     if (isNaN(qty) || qty < 0) return;
 
     setEditItems((prev) =>
@@ -243,59 +242,55 @@ export default function InvoicesPage() {
   };
 
   return (
-    <main className="min-h-screen bg-slate-50 pb-24 print:bg-white print:pb-0">
+    <main className="app-shell print:bg-white">
       <div className="print:hidden">
         <AppHeader />
       </div>
 
-      <section className="mx-auto max-w-md px-4 py-5 print:max-w-2xl">
+      <section className="page-wrap print:max-w-2xl">
         <div className="print:hidden">
-          <div className="mb-5">
-            <h2 className="text-2xl font-bold tracking-tight text-slate-900">
-              Invoices
-            </h2>
-            <p className="mt-1 text-sm text-slate-500">
-              View, search, print, edit, delete, and export saved invoices.
-            </p>
+          <div className="page-hero hero-invoices">
+            <div className="page-hero-content">
+              <h2 className="page-hero-title">Invoices</h2>
+              <p className="page-hero-subtitle">
+                View, search, print, edit, delete, and export saved invoices.
+              </p>
+            </div>
           </div>
 
-          <div className="mb-4 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
+          <div className="surface-card p-4">
             <input
               type="text"
               placeholder="Search by invoice number, customer, or phone"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-slate-400"
             />
           </div>
 
-          <div className="mb-4 grid grid-cols-2 gap-3">
+          <div className="mt-4 grid grid-cols-2 gap-3">
             <button
               onClick={handleExportInvoices}
-              className="rounded-xl bg-emerald-600 px-4 py-3 text-sm font-medium text-white"
+              className="app-button app-button-success w-full"
             >
               Export Invoices
             </button>
 
             <button
               onClick={handleExportDailySales}
-              className="rounded-xl bg-blue-600 px-4 py-3 text-sm font-medium text-white"
+              className="app-button app-button-secondary w-full"
             >
               Export Daily Sales
             </button>
           </div>
 
-          <div className="space-y-4">
+          <div className="mt-4 space-y-4">
             {filteredInvoices.length === 0 ? (
-              <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
+              <div className="surface-card p-4">
                 <p className="text-sm text-slate-500">No matching invoices found.</p>
               </div>
             ) : (
               filteredInvoices.map((invoice) => (
-                <article
-                  key={invoice.id}
-                  className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200"
-                >
+                <article key={invoice.id} className="surface-card p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <h3 className="text-lg font-semibold text-slate-900">
@@ -306,7 +301,7 @@ export default function InvoicesPage() {
 
                     <button
                       onClick={() => setSelectedInvoice(invoice)}
-                      className="rounded-xl bg-slate-900 px-3 py-2 text-sm font-medium text-white"
+                      className="app-button app-button-primary px-4 py-2 text-sm"
                     >
                       View
                     </button>
@@ -340,7 +335,7 @@ export default function InvoicesPage() {
         </div>
 
         {selectedInvoice && (
-          <div className="mt-6 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 print:mt-0 print:rounded-none print:shadow-none print:ring-0">
+          <div className="surface-card-strong mt-6 p-5 print:mt-0 print:rounded-none print:shadow-none print:ring-0">
             <div className="mb-6 flex items-start justify-between gap-4">
               <div>
                 <h1 className="text-2xl font-bold tracking-tight text-slate-900">
@@ -357,7 +352,7 @@ export default function InvoicesPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 rounded-xl bg-slate-50 p-4 text-sm">
+            <div className="grid grid-cols-2 gap-4 rounded-2xl bg-slate-50 p-4 text-sm">
               <div>
                 <p className="text-slate-500">Customer Name</p>
                 <p className="mt-1 font-medium text-slate-900">
@@ -387,7 +382,7 @@ export default function InvoicesPage() {
               </div>
             </div>
 
-            <div className="mt-6 overflow-hidden rounded-xl ring-1 ring-slate-200">
+            <div className="mt-6 overflow-hidden rounded-2xl ring-1 ring-slate-200">
               <div className="grid grid-cols-4 bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-700">
                 <div>Item</div>
                 <div>Qty</div>
@@ -426,28 +421,28 @@ export default function InvoicesPage() {
             <div className="mt-6 flex flex-wrap gap-3 print:hidden">
               <button
                 onClick={handlePrint}
-                className="flex-1 rounded-xl bg-slate-900 px-4 py-3 text-sm font-medium text-white"
+                className="app-button app-button-primary flex-1"
               >
                 Print Invoice
               </button>
 
               <button
                 onClick={() => handleEditInvoice(selectedInvoice)}
-                className="flex-1 rounded-xl bg-blue-600 px-4 py-3 text-sm font-medium text-white"
+                className="app-button app-button-secondary flex-1"
               >
                 Edit Invoice
               </button>
 
               <button
                 onClick={() => handleDeleteInvoice(selectedInvoice)}
-                className="flex-1 rounded-xl bg-red-600 px-4 py-3 text-sm font-medium text-white"
+                className="app-button app-button-danger flex-1"
               >
                 Delete Invoice
               </button>
 
               <button
                 onClick={() => setSelectedInvoice(null)}
-                className="w-full rounded-xl bg-slate-200 px-4 py-3 text-sm font-medium text-slate-900"
+                className="app-button app-button-muted w-full"
               >
                 Close
               </button>
@@ -456,7 +451,7 @@ export default function InvoicesPage() {
         )}
 
         {editingInvoice && (
-          <div className="mt-6 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+          <div className="surface-card mt-6 p-5">
             <h3 className="mb-4 text-lg font-bold text-slate-900">
               Edit Invoice {editingInvoice.id}
             </h3>
@@ -465,26 +460,24 @@ export default function InvoicesPage() {
               <input
                 value={editCustomerName}
                 onChange={(e) => setEditCustomerName(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 px-3 py-2"
                 placeholder="Customer name"
               />
 
               <input
                 value={editCustomerPhone}
                 onChange={(e) => setEditCustomerPhone(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 px-3 py-2"
                 placeholder="Phone"
               />
             </div>
 
             <div className="mt-4 space-y-3">
               {editItems.map((item, index) => (
-                <div key={index} className="rounded-xl bg-slate-50 p-3">
+                <div key={index} className="rounded-2xl bg-slate-50 p-3">
                   <div className="flex items-center justify-between">
                     <p className="font-medium text-slate-900">{item.name}</p>
                     <button
                       onClick={() => handleRemoveEditItem(index)}
-                      className="text-sm text-red-600"
+                      className="text-sm font-medium text-red-600"
                     >
                       Remove
                     </button>
@@ -495,10 +488,10 @@ export default function InvoicesPage() {
                     min="0"
                     value={item.quantity}
                     onChange={(e) => handleEditItemQuantity(index, e.target.value)}
-                    className="mt-2 w-full rounded-lg border border-slate-200 px-2 py-2"
+                    className="mt-2"
                   />
 
-                  <p className="mt-1 text-sm text-slate-500">
+                  <p className="mt-2 text-sm text-slate-500">
                     Total: {formatCurrency(item.lineTotal)}
                   </p>
                 </div>
@@ -508,14 +501,14 @@ export default function InvoicesPage() {
             <div className="mt-4 flex gap-3">
               <button
                 onClick={handleSaveEditedInvoice}
-                className="flex-1 rounded-xl bg-emerald-600 px-4 py-3 text-white"
+                className="app-button app-button-success flex-1"
               >
                 Save Changes
               </button>
 
               <button
                 onClick={() => setEditingInvoice(null)}
-                className="flex-1 rounded-xl bg-slate-200 px-4 py-3 text-slate-900"
+                className="app-button app-button-muted flex-1"
               >
                 Cancel
               </button>
@@ -529,4 +522,4 @@ export default function InvoicesPage() {
       </div>
     </main>
   );
-} 
+}

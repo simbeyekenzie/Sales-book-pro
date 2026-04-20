@@ -133,30 +133,41 @@ export default function StockPage() {
   };
 
   return (
-    <main className="min-h-screen bg-slate-50 pb-24">
+    <main className="app-shell">
       <AppHeader />
 
-      <section className="mx-auto max-w-md px-4 py-5">
-        <div className="mb-5 flex items-center justify-between gap-3">
+      <section className="page-wrap">
+        <div className="page-hero hero-stock">
+          <div className="page-hero-content">
+            <h2 className="page-hero-title">Stock</h2>
+            <p className="page-hero-subtitle">
+              Manage your inventory and add new stock items.
+            </p>
+          </div>
+        </div>
+
+        <div className="mb-5 flex items-start justify-between gap-3">
           <div>
-            <h2 className="text-2xl font-bold tracking-tight text-slate-900">
-              Stock
-            </h2>
+            <h3 className="text-xl font-bold tracking-tight text-slate-900">
+              Product Inventory
+            </h3>
             <p className="mt-1 text-sm text-slate-500">
-              Manage your current product inventory.
+              Keep your stock levels, prices, and barcode records updated.
             </p>
           </div>
 
           <button
             onClick={() => setShowAddForm((prev) => !prev)}
-            className="rounded-xl bg-slate-900 px-4 py-3 text-sm font-medium text-white"
+            className={`app-button w-auto min-w-[92px] ${
+              showAddForm ? "app-button-muted" : "app-button-primary"
+            }`}
           >
             {showAddForm ? "Close" : "+ New"}
           </button>
         </div>
 
         {showAddForm && (
-          <div className="mb-5 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
+          <div className="surface-card mb-5 p-4">
             <h3 className="text-base font-semibold text-slate-900">
               Add New Product
             </h3>
@@ -169,7 +180,6 @@ export default function StockPage() {
                 onChange={(e) =>
                   setNewProduct((prev) => ({ ...prev, name: e.target.value }))
                 }
-                className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-slate-400"
               />
 
               <input
@@ -182,7 +192,6 @@ export default function StockPage() {
                     barcode: e.target.value,
                   }))
                 }
-                className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-slate-400"
               />
 
               <input
@@ -196,7 +205,6 @@ export default function StockPage() {
                     quantity: e.target.value,
                   }))
                 }
-                className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-slate-400"
               />
 
               <input
@@ -206,7 +214,6 @@ export default function StockPage() {
                 onChange={(e) =>
                   setNewProduct((prev) => ({ ...prev, unit: e.target.value }))
                 }
-                className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-slate-400"
               />
 
               <input
@@ -220,7 +227,6 @@ export default function StockPage() {
                     buyingPrice: e.target.value,
                   }))
                 }
-                className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-slate-400"
               />
 
               <input
@@ -234,7 +240,6 @@ export default function StockPage() {
                     sellingPrice: e.target.value,
                   }))
                 }
-                className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-slate-400"
               />
 
               <input
@@ -248,12 +253,11 @@ export default function StockPage() {
                     lowStock: e.target.value,
                   }))
                 }
-                className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-slate-400"
               />
 
               <button
                 onClick={handleCreateProduct}
-                className="w-full rounded-xl bg-emerald-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-emerald-700"
+                className="app-button app-button-success w-full"
               >
                 Save Product
               </button>
@@ -261,15 +265,23 @@ export default function StockPage() {
           </div>
         )}
 
-        <div className="space-y-4">
-          {products.map((product) => (
-            <ProductCard
-              key={product.id}
-              product={product}
-              onAdd={handleAddStock}
-              onReduce={handleReduceStock}
-            />
-          ))}
+        <div className="section-stack">
+          {products.length === 0 ? (
+            <div className="surface-card p-4">
+              <p className="text-sm text-slate-500">
+                No products available yet. Add your first product to begin.
+              </p>
+            </div>
+          ) : (
+            products.map((product) => (
+              <ProductCard
+                key={product.id}
+                product={product}
+                onAdd={handleAddStock}
+                onReduce={handleReduceStock}
+              />
+            ))
+          )}
         </div>
       </section>
 

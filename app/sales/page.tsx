@@ -89,6 +89,7 @@ export default function SalesPage() {
     }
 
     setSelectedProductId(matchedProduct.id);
+    setShowScanner(false);
     window.alert(`${matchedProduct.name} selected.`);
   };
 
@@ -219,21 +220,21 @@ export default function SalesPage() {
   );
 
   return (
-    <main className="min-h-screen bg-slate-50 pb-24">
+    <main className="app-shell">
       <AppHeader />
 
-      <section className="mx-auto max-w-md px-4 py-5">
-        <div className="mb-5">
-          <h2 className="text-2xl font-bold tracking-tight text-slate-900">
-            Sales
-          </h2>
-          <p className="mt-1 text-sm text-slate-500">
-            Create a sale and prepare invoice items.
-          </p>
+      <section className="page-wrap">
+        <div className="page-hero hero-sales">
+          <div className="page-hero-content">
+            <h2 className="page-hero-title">Sales</h2>
+            <p className="page-hero-subtitle">
+              Create a sale, scan products, and prepare invoice items.
+            </p>
+          </div>
         </div>
 
-        <div className="space-y-4">
-          <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
+        <div className="section-stack">
+          <div className="surface-card p-4">
             <h3 className="text-base font-semibold text-slate-900">
               Customer Details
             </h3>
@@ -244,7 +245,6 @@ export default function SalesPage() {
                 placeholder="Customer name"
                 value={customerName}
                 onChange={(e) => setCustomerName(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-slate-400"
               />
 
               <input
@@ -252,12 +252,11 @@ export default function SalesPage() {
                 placeholder="Customer phone"
                 value={customerPhone}
                 onChange={(e) => setCustomerPhone(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-slate-400"
               />
             </div>
           </div>
 
-          <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
+          <div className="surface-card p-4">
             <h3 className="text-base font-semibold text-slate-900">
               Find Product by Barcode
             </h3>
@@ -268,26 +267,25 @@ export default function SalesPage() {
                 placeholder="Enter or paste barcode"
                 value={barcodeInput}
                 onChange={(e) => setBarcodeInput(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-slate-400"
               />
 
               <button
                 onClick={handleBarcodeSearch}
-                className="w-full rounded-xl bg-blue-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-blue-700"
+                className="app-button app-button-secondary w-full"
               >
                 Find by Barcode
               </button>
 
               <button
                 onClick={() => setShowScanner(true)}
-                className="w-full rounded-xl bg-slate-800 px-4 py-3 text-sm font-medium text-white transition hover:bg-slate-900"
+                className="app-button app-button-primary w-full"
               >
                 Scan with Camera
               </button>
             </div>
           </div>
 
-          <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
+          <div className="surface-card p-4">
             <h3 className="text-base font-semibold text-slate-900">
               Add Sale Item
             </h3>
@@ -296,7 +294,6 @@ export default function SalesPage() {
               <select
                 value={selectedProductId}
                 onChange={(e) => setSelectedProductId(Number(e.target.value))}
-                className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-slate-400"
               >
                 {products.map((product) => {
                   const remainingStock = getRemainingStock(product);
@@ -310,13 +307,17 @@ export default function SalesPage() {
               </select>
 
               {selectedProduct && (
-                <div className="rounded-xl bg-slate-50 p-3 text-sm text-slate-600">
-                  Selling Price: {formatCurrency(selectedProduct.sellingPrice)}
-                  <br />
-                  Available Now: {getRemainingStock(selectedProduct)}{" "}
-                  {selectedProduct.unit}
-                  <br />
-                  Barcode: {selectedProduct.barcode?.trim() || "Not assigned"}
+                <div className="rounded-2xl bg-slate-50 p-3 text-sm text-slate-600">
+                  <div>
+                    Selling Price: {formatCurrency(selectedProduct.sellingPrice)}
+                  </div>
+                  <div className="mt-1">
+                    Available Now: {getRemainingStock(selectedProduct)}{" "}
+                    {selectedProduct.unit}
+                  </div>
+                  <div className="mt-1">
+                    Barcode: {selectedProduct.barcode?.trim() || "Not assigned"}
+                  </div>
                 </div>
               )}
 
@@ -326,19 +327,18 @@ export default function SalesPage() {
                 placeholder="Quantity"
                 value={quantity}
                 onChange={(e) => setQuantity(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-slate-400"
               />
 
               <button
                 onClick={handleAddItem}
-                className="w-full rounded-xl bg-slate-900 px-4 py-3 text-sm font-medium text-white transition hover:bg-slate-700"
+                className="app-button app-button-primary w-full"
               >
                 Add Item
               </button>
             </div>
           </div>
 
-          <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
+          <div className="surface-card p-4">
             <div className="flex items-center justify-between">
               <h3 className="text-base font-semibold text-slate-900">
                 Invoice Items
@@ -357,7 +357,7 @@ export default function SalesPage() {
                 saleItems.map((item, index) => (
                   <div
                     key={`${item.productId}-${index}`}
-                    className="rounded-xl bg-slate-50 p-3"
+                    className="rounded-2xl bg-slate-50 p-3"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div>
@@ -373,6 +373,7 @@ export default function SalesPage() {
                           Remove
                         </button>
                       </div>
+
                       <p className="font-semibold text-slate-900">
                         {formatCurrency(item.lineTotal)}
                       </p>
@@ -382,7 +383,7 @@ export default function SalesPage() {
               )}
             </div>
 
-            <div className="mt-4 space-y-2 border-t border-slate-200 pt-4">
+            <div className="mt-4 space-y-3 border-t border-slate-200 pt-4">
               <div className="flex items-center justify-between">
                 <p className="text-sm text-slate-500">Grand Total</p>
                 <p className="text-lg font-bold text-slate-900">
@@ -399,7 +400,7 @@ export default function SalesPage() {
 
               <button
                 onClick={handleFinalizeSale}
-                className="mt-3 w-full rounded-xl bg-emerald-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-emerald-700"
+                className="app-button app-button-success w-full"
               >
                 Finalize Sale
               </button>
